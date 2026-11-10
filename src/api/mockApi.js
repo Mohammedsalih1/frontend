@@ -84,7 +84,7 @@ export function getSession() {
 // POST /api/auth/login
 export async function login({ email, password }) {
   try {
-    const response = await fetch('https://backend-go-7719.onrender.com/api/auth/login', {
+    const response = await fetch('https://backend-go-7719.onrender.com/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -104,7 +104,7 @@ export async function login({ email, password }) {
 // POST /api/auth/register
 export async function register({ name, email, password }) {
   try {
-    const response = await fetch('https://backend-go-7719.onrender.com/api/auth/register', {
+    const response = await fetch('https://backend-go-7719.onrender.com/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
@@ -129,7 +129,7 @@ export async function logout() {
 // GET /api/areas
 export async function getAreas() {
   try {
-    const response = await fetch('https://backend-go-7719.onrender.com/api/areas');
+    const response = await fetch('https://backend-go-7719.onrender.com/areas');
     if (!response.ok) throw new Error('فشل في جلب المناطق');
     return await response.json();
   } catch (error) {
@@ -141,7 +141,7 @@ export async function getAreas() {
 // GET /api/areas/:id  (المنطقة + الجدول + البلاغات المعتمدة + الحالة الفعلية)
 export async function getAreaOverview(areaId) {
   try {
-    const response = await fetch(`https://backend-go-7719.onrender.com/api/areas/${areaId}`);
+    const response = await fetch(`https://backend-go-7719.onrender.com/areas/${areaId}`);
     if (!response.ok) throw fail('المنطقة غير موجودة', response.status);
     return await response.json();
   } catch (error) {
@@ -153,7 +153,7 @@ export async function getAreaOverview(areaId) {
 export async function createReport({ areaId, place, status, desc }) {
   try {
     const session = getSession();
-    const response = await fetch('https://backend-go-7719.onrender.com/api/reports', {
+    const response = await fetch('https://backend-go-7719.onrender.com/reports', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
