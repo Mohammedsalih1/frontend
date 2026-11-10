@@ -83,29 +83,39 @@ export function getSession() {
 
 // POST /api/auth/login
 export async function login({ email, password }) {
-  await wait();
-  const db = load();
-  const u = db.users.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
-  if (!u || u.password !== password) throw fail('البريد أو كلمة المرور غير صحيحة', 401);
-  if (!u.active) throw fail('هذا الحساب موقوف', 403);
-  const session = { token: 'mock-jwt-' + Math.random().toString(36).slice(2), user: publicUser(u) };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return session;
+  try {
+    const response = await fetch('https://backend-go-7719.onrender.com/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw fail(data.message || 'البريد أو كلمة المرور غير صحيحة', response.status);
+    
+    // حفظ الجلسة الحقيقية القادمة من الباك اند
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    return data;
+  } catch (error) {
+    throw fail(error.message || 'فشل الاتصال بالخادم', 500);
+  }
 }
 
 // POST /api/auth/register
 export async function register({ name, email, password }) {
-  await wait();
-  const db = load();
-  if (db.users.some((x) => x.email.toLowerCase() === email.trim().toLowerCase())) {
-    throw fail('هذا البريد مسجّل مسبقاً', 409);
+  try {
+    const response = await fetch('https://backend-go-7719.onrender.com/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw fail(data.message || 'فشل إنشاء الحساب', response.status);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    return data;
+  } catch (error) {
+    throw fail(error.message || 'فشل الاتصال بالخادم', 500);
   }
-  const user = { id: nextId(db.users), name: name.trim(), email: email.trim(), password, role: 'user', active: true };
-  db.users.push(user);
-  save(db);
-  const session = { token: 'mock-jwt-' + Math.random().toString(36).slice(2), user: publicUser(user) };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return session;
 }
 
 // POST /api/auth/logout
@@ -118,44 +128,53 @@ export async function logout() {
 
 // GET /api/areas
 export async function getAreas() {
-  await wait(200);
-  return load().areas;
+  try {
+    const response = await fetch('https://backend-go-7719.onrender.com/api/areas');
+    if (!response.ok) throw new Error('فشل في جلب المناطق');
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching areas from backend:", error);
+    return []; // إرجاع مصفوفة فارغة في حال حدوث خطأ
+  }
 }
 
 // GET /api/areas/:id  (المنطقة + الجدول + البلاغات المعتمدة + الحالة الفعلية)
 export async function getAreaOverview(areaId) {
-  await wait();
-  const db = load();
-  const area = db.areas.find((a) => a.id === areaId);
-  if (!area) throw fail('المنطقة غير موجودة', 404);
-  const schedules = db.schedules.filter((s) => s.areaId === areaId);
-  const reports = db.reports
-    .filter((r) => r.areaId === areaId && r.review === 'approved')
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const dayAgo = Date.now() - 24 * 60 * min;
-  const todayCount = db.reports.filter((r) => r.areaId === areaId && r.createdAt > dayAgo).length;
-  const actual = reports[0]?.status || area.state;
-  return { area, schedules, reports, actual, todayCount, lastUpdate: reports[0]?.createdAt || null };
+  try {
+    const response = await fetch(`https://backend-go-7719.onrender.com/api/areas/${areaId}`);
+    if (!response.ok) throw fail('المنطقة غير موجودة', response.status);
+    return await response.json();
+  } catch (error) {
+    throw fail(error.message || 'فشل الاتصال بالخادم', 500);
+  }
 }
 
 // POST /api/reports
 export async function createReport({ areaId, place, status, desc }) {
-  await wait();
-  const db = load();
-  const session = getSession();
-  const report = {
-    id: nextId(db.reports),
-    areaId,
-    place: place?.trim() || '',
-    status,
-    desc: desc.trim(),
-    createdAt: Date.now(),
-    review: 'pending',
-    author: session?.user?.name || 'زائر',
-  };
-  db.reports.unshift(report);
-  save(db);
-  return report;
+  try {
+    const session = getSession();
+    const response = await fetch('https://backend-go-7719.onrender.com/api/reports', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        // إذا كان النظام يتطلب توكن للمصادقة، يمكنك تفعيله هكذا:
+        // 'Authorization': `Bearer ${session?.token}`
+      },
+      body: JSON.stringify({ 
+        areaId, 
+        place: place?.trim() || '', 
+        status, 
+        desc: desc.trim() 
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw fail(data.message || 'فشل إرسال البلاغ', response.status);
+    
+    return data;
+  } catch (error) {
+    throw fail(error.message || 'فشل الاتصال بالخادم', 500);
+  }
 }
 
 /* ============ Admin ============ */
